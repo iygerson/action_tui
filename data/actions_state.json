@@ -2,11 +2,6 @@
   "version": 1,
   "tables": [
     {
-      "id": "table_home_actions",
-      "name": "Home Actions",
-      "created_at": "2026-04-26T15:20:11Z"
-    },
-    {
       "id": "table_athena",
       "name": "Athena",
       "created_at": "2026-04-26T15:20:11Z"
@@ -168,19 +163,6 @@
       "retired_at": ""
     },
     {
-      "id": "arc_e51bc25dea4b",
-      "table_id": "table_home_actions",
-      "title": "Request better work computer",
-      "due_date": "2026-05-05",
-      "estimate": "10",
-      "notes": "Need to get better work computer\n-Already spoke to Steven and he said I'm good to do so\n->Request the computer - Complete, requested",
-      "status": "Transferred",
-      "created_at": "2026-04-26T15:20:11Z",
-      "updated_at": "2026-05-06T02:16:04Z",
-      "completed_at": "",
-      "retired_at": ""
-    },
-    {
       "id": "act_5356eb6ddd09",
       "table_id": "table_actions_tool_8569",
       "title": "Show Natalie",
@@ -200,9 +182,9 @@
       "due_date": "2026-05-05",
       "estimate": "",
       "notes": "- [color:green] Remove Magenta from pallet\n- [color:green] Blue should be called purple, also add a blue\n- [color:green] when I change the color of a font it no longer highlights when it is focused on\n- [color:green] Remove the capability to retire from the projects or today groups. x should only work inside archive. also, there should be warning box that popps up asking if you're sure\n- [color:green] Unable to toggle up and down in the today detail view\n- [color:green] when in the projects detail view, it should open already scrolled to where I can see the item focused on. that doesn't always happen\n- [color:green] I'd like the tables in the detail view to all be the same width. currently they're all different sizes. Also would be nice if they were somewhat stylized like the rest of the tui is\n- I'd like the completed box to show the tables of all the actions represented, not actually all the actions. if I go into the detailed view of the completed list, then show all the tables with their relevent actions\n- [color:green] When I hit n and open the new note window, I don't want the backround to become opaque, I'd prefer it to become faded as if I'm looking through dark glass. Same with all the windows I open, not just the new note\n- [color:green] I don't want the capability to retire something just like that. Only from the Completed section and only after a Confirmation window that requires me to confirm that I want to delete something\n- [color:green] I want the All Actions, All Projects, All completed headers in the left pane boxes to be removed. Focusing on those boxes should open the boxes detail view on the right pane automatically\n- [color:green] The name of the boxes should be stilized and a different color, lets say the same color as the box. so when the box isn't in focus, it should be yellow and when it is in focus it should be green?\n- [color:green] In the actions detail view, I want a visual separation between the table info up top and the notes section that I write in, Ideally it's stylized with a line or someother boundary\n- [color:green] When opening the detailed view of an action, I want the focus to automatically be on the last bullet",
-      "status": "Transferred",
+      "status": "",
       "created_at": "2026-05-03T04:00:48Z",
-      "updated_at": "2026-05-06T02:16:04Z",
+      "updated_at": "2026-05-06T02:42:37Z",
       "completed_at": "",
       "retired_at": ""
     },
@@ -216,19 +198,6 @@
       "status": "Not Started",
       "created_at": "2026-05-03T15:29:29Z",
       "updated_at": "2026-05-03T15:30:07Z",
-      "completed_at": "",
-      "retired_at": ""
-    },
-    {
-      "id": "act_17ec3452a33b",
-      "table_id": "table_home_actions",
-      "title": "My newest action for Wobbs",
-      "due_date": "2026-05-05",
-      "estimate": "",
-      "notes": "- newest note for wobbs\n>> [color:#d97706] Here's another cool thing asdkfladlsfjadlsfkjads asdlfkjadsf adsklfja aldskfjasdf lkdasf\n         subaction notes here\n>> [color:#d97706] new subaction note\n>> [color:#d97706] new sub action\n   - with more notes\n>> [color:#d97706] more actions!!!!!!!!\n   - note 1 --more information here\n   - note2\n   - note3\n   - outside the action\n   - here's something else\n   - more stuff here\n   - more stuff here\n   - and here\n   - and here\n- outside the action again\n>> [color:#d97706] one more action\n   - another note\n- another note\n   - and another action note\n   - first action note\n- and another note\n- normal note here\n>> [color:#d97706] new subaction\n   - with some notes\n   - and more notes everything here is a note and a note and a note and a note and a note and a note\n- new bullet\n>> [color:#d97706] and a new actoin I'm now renaming the action\n   - here are my first notes\n   - - new note\n   - new note\n   - and a new note\n   - and a new note\n   - and another\n   - and another note\n- another note",
-      "status": "Transferred",
-      "created_at": "2026-05-03T15:46:04Z",
-      "updated_at": "2026-05-06T02:16:04Z",
       "completed_at": "",
       "retired_at": ""
     },
@@ -506,6 +475,32 @@
       "updated_at": "2026-05-04T12:04:36Z",
       "completed_at": "2026-05-04T12:04:36Z",
       "retired_at": ""
+    },
+    {
+      "id": "arc_e51bc25dea4b",
+      "table_id": "table_home_actions",
+      "title": "Request better work computer",
+      "due_date": "2026-05-05",
+      "estimate": "10",
+      "notes": "Need to get better work computer\n-Already spoke to Steven and he said I'm good to do so\n->Request the computer - Complete, requested",
+      "status": "Completed",
+      "created_at": "2026-04-26T15:20:11Z",
+      "updated_at": "2026-05-06T02:43:18Z",
+      "completed_at": "2026-05-06T02:43:18Z",
+      "retired_at": ""
+    },
+    {
+      "id": "act_17ec3452a33b",
+      "table_id": "table_home_actions",
+      "title": "My newest action for Wobbs",
+      "due_date": "2026-05-05",
+      "estimate": "",
+      "notes": "- newest note for wobbs\n>> [color:#d97706] Here's another cool thing asdkfladlsfjadlsfkjads asdlfkjadsf adsklfja aldskfjasdf lkdasf\n         subaction notes here\n>> [color:#d97706] new subaction note\n>> [color:#d97706] new sub action\n   - with more notes\n>> [color:#d97706] more actions!!!!!!!!\n   - note 1 --more information here\n   - note2\n   - note3\n   - outside the action\n   - here's something else\n   - more stuff here\n   - more stuff here\n   - and here\n   - and here\n- outside the action again\n>> [color:#d97706] one more action\n   - another note\n- another note\n   - and another action note\n   - first action note\n- and another note\n- normal note here\n>> [color:#d97706] new subaction\n   - with some notes\n   - and more notes everything here is a note and a note and a note and a note and a note and a note\n- new bullet\n>> [color:#d97706] and a new actoin I'm now renaming the action\n   - here are my first notes\n   - - new note\n   - new note\n   - and a new note\n   - and a new note\n   - and another\n   - and another note\n- another note",
+      "status": "Completed",
+      "created_at": "2026-05-03T15:46:04Z",
+      "updated_at": "2026-05-06T02:43:18Z",
+      "completed_at": "2026-05-06T02:43:18Z",
+      "retired_at": ""
     }
   ],
   "graveyard": [
@@ -710,6 +705,11 @@
       "id": "table_eitan_s_presentation_3a2a",
       "name": "Eitan's presentation",
       "created_at": "2026-05-03T23:25:43Z"
+    },
+    {
+      "id": "table_home_actions",
+      "name": "Home Actions",
+      "created_at": "2026-04-26T15:20:11Z"
     }
   ]
 }
