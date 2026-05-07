@@ -279,7 +279,7 @@ class ActionsStore:
         return ActionState(version=1, tables=[], active=[], archive=[], graveyard=[], retired_tables=[])
 
     def _load_state(self) -> ActionState:
-        raw = json.loads(self.state_path.read_text(encoding="utf-8"))
+        raw = json.loads(self.state_path.read_text(encoding="utf-8-sig"))
         return ActionState(
             version=raw.get("version", 1),
             tables=[TableRecord(**item) for item in raw.get("tables", [])],

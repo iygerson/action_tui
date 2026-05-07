@@ -21,7 +21,6 @@ from textual.widgets import Button, Footer, Input, Label, ListItem, ListView, St
 from actions_store import ActionRecord, ActionsStore, NoteBullet, TableRecord, display_note_text, extract_note_bullets
 
 
-DEFAULT_WORKBOOK = Path(r"C:\Users\ilany\Desktop\Actions_Tool.xlsm")
 STATUS_OPTIONS = ["Not Started", "Started", "Completed"]
 SUBACTION_COLOR = "#d97706"
 SUBACTION_NOT_STARTED_COLOR = "#6b7280"
@@ -279,7 +278,7 @@ class HelpScreen(ModalScreen[None]):
 
     def compose(self) -> ComposeResult:
         yield Vertical(
-            Label("Actions TUI Prototype", id="help_title"),
+            Label("Actions TUI", id="help_title"),
             Static(
                 "\n".join(
                     [
@@ -1219,7 +1218,7 @@ class ActionsTuiApp(App[None]):
     def __init__(self, base_dir: Path | None = None, workbook_path: Path | None = None) -> None:
         super().__init__()
         self.base_dir = base_dir or Path(__file__).resolve().parent
-        self.store = ActionsStore(self.base_dir, workbook_path=workbook_path or DEFAULT_WORKBOOK)
+        self.store = ActionsStore(self.base_dir, workbook_path=workbook_path)
         self.selected_date = self.default_selected_date()
         self.group_ids = ["today", "projects", "archive"]
         self.group_list_ids = {
@@ -1261,7 +1260,7 @@ class ActionsTuiApp(App[None]):
         self.detail_archive_mode = "tables"
         self.detail_archive_action_indexes: dict[str, int] = {}
         self.refreshing_lists = False
-        self.status_text = "Loaded actions prototype"
+        self.status_text = "Loaded Actions TUI"
         self.last_detail_pane_width = 0
 
     def default_selected_date(self) -> date:
@@ -3269,7 +3268,7 @@ class ActionsTuiApp(App[None]):
 
 def main(argv: list[str] | None = None) -> int:
     args = argv if argv is not None else sys.argv[1:]
-    workbook_path = DEFAULT_WORKBOOK if not args else Path(args[0])
+    workbook_path = Path(args[0]) if args else None
     ActionsTuiApp(workbook_path=workbook_path).run()
     return 0
 
