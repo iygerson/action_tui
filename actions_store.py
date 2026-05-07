@@ -138,17 +138,17 @@ def extract_note_bullets(notes: str) -> list[NoteBullet]:
     return bullets
 
 
-def replace_note_bullet(existing_notes: str, bullet_index: int, note_text: str) -> str:
+def replace_note_bullet(existing_notes: str, bullet_index: int, note_text: str, color: str | None = None) -> str:
     bullets = extract_note_bullets(existing_notes)
     if bullet_index < 0 or bullet_index >= len(bullets):
         raise IndexError("Unknown note bullet.")
+    bullet = bullets[bullet_index]
     replacement = format_note_bullet(
         note_text,
-        prefix=bullets[bullet_index].prefix,
-        color=bullets[bullet_index].color,
+        prefix=bullet.prefix,
+        color=bullet.color if color is None else color,
     )
     lines = existing_notes.splitlines()
-    bullet = bullets[bullet_index]
     replacement_lines = replacement.splitlines() if replacement else []
     updated_lines = lines[: bullet.start_line] + replacement_lines + lines[bullet.end_line :]
     return "\n".join(updated_lines).rstrip()
@@ -668,13 +668,20 @@ class ActionsStore:
         self.save()
         return action
 
-    def update_action_note_bullet(self, action_id: str, bullet_index: int, note_text: str) -> ActionRecord:
+    def update_action_note_bullet(
+        self,
+        action_id: str,
+        bullet_index: int,
+        note_text: str,
+        *,
+        color: str | None = None,
+    ) -> ActionRecord:
         found = self.action_by_id(action_id)
         if found is None:
             raise KeyError("Unknown action.")
         _, action = found
         self.clear_transferred_status_if_needed(action)
-        action.notes = replace_note_bullet(action.notes, bullet_index, note_text)
+        action.notes = replace_note_bullet(action.notes, bullet_index, note_text, color=color)
         action.updated_at = utc_now_iso()
         self.save()
         return action

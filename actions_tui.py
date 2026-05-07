@@ -24,10 +24,11 @@ from actions_store import ActionRecord, ActionsStore, NoteBullet, TableRecord, d
 DEFAULT_WORKBOOK = Path(r"C:\Users\ilany\Desktop\Actions_Tool.xlsm")
 STATUS_OPTIONS = ["Not Started", "Started", "Completed"]
 SUBACTION_COLOR = "#d97706"
+SUBACTION_NOT_STARTED_COLOR = "#6b7280"
+SUBACTION_COMPLETED_COLOR = "#00a651"
+TABLE_BORDER_COLOR = "#2f6b3c"
 NOTE_BULLET_COLORS = {
     "r": ("red", "Red"),
-    "g": ("green", "Green"),
-    "y": ("yellow", "Yellow"),
     "p": ("#8a5cff", "Purple"),
     "b": ("#1f4ba8", "Blue"),
     "c": ("cyan", "Cyan"),
@@ -82,6 +83,24 @@ def normalize_status_value(raw_value: str) -> str:
     return "Started"
 
 
+def subaction_color_for_status(status: str) -> str:
+    normalized = normalize_status_value(status)
+    if normalized == "Not Started":
+        return SUBACTION_NOT_STARTED_COLOR
+    if normalized == "Completed":
+        return SUBACTION_COMPLETED_COLOR
+    return SUBACTION_COLOR
+
+
+def subaction_status_from_color(color: str) -> str:
+    normalized = color.strip().lower()
+    if normalized == SUBACTION_NOT_STARTED_COLOR.lower():
+        return "Not Started"
+    if normalized == SUBACTION_COMPLETED_COLOR.lower():
+        return "Completed"
+    return "Started"
+
+
 @dataclass
 class RepresentativeEntry:
     kind: str
@@ -120,6 +139,46 @@ class StatusSelect(Static):
 
     def on_blur(self, _: events.Blur) -> None:
         self.refresh()
+
+    async def _on_key(self, event: events.Key) -> None:
+        normalized = NoteWriteTextArea.normalized_event_keys(event)
+        if "escape" in normalized:
+            event.stop()
+            event.prevent_default()
+            dismiss = getattr(self.screen, "dismiss_with_focus_restore", None)
+            if callable(dismiss):
+                dismiss(None)
+            return
+        if "tab" in normalized:
+            event.stop()
+            event.prevent_default()
+            submit = getattr(self.screen, "submit", None)
+            if callable(submit):
+                submit()
+            return
+        if "left" in normalized:
+            event.stop()
+            event.prevent_default()
+            self.step(-1)
+            return
+        if "right" in normalized:
+            event.stop()
+            event.prevent_default()
+            self.step(1)
+            return
+        focus_previous = getattr(self.screen, "focus_previous_subaction_field", None)
+        if "up" in normalized and callable(focus_previous):
+            event.stop()
+            event.prevent_default()
+            focus_previous()
+            return
+        focus_next = getattr(self.screen, "focus_next_subaction_field", None)
+        if ("down" in normalized or {"enter", "return"} & normalized) and callable(focus_next):
+            event.stop()
+            event.prevent_default()
+            focus_next()
+            return
+        await super()._on_key(event)
 
 
 class PromptScreen(ModalScreen[Optional[str]]):
@@ -292,7 +351,7 @@ class ActionEditorScreen(ModalScreen[Optional[dict[str, str]]]):
                     Input(value=self.initial.get("due_date", ""), id="due_input"),
                 ),
                 Vertical(
-                    Label("Estimate", classes="editor_label"),
+                    Label("Time", classes="editor_label"),
                     Input(value=self.initial.get("estimate", ""), id="estimate_input"),
                 ),
                 Vertical(
@@ -430,16 +489,12 @@ class NoteColorPaletteScreen(ModalScreen[Optional[str]]):
     BINDINGS = [
         Binding("escape", "cancel", "Cancel"),
         Binding("r", "pick_red", show=False, priority=True),
-        Binding("g", "pick_green", show=False, priority=True),
-        Binding("y", "pick_yellow", show=False, priority=True),
         Binding("p", "pick_purple", show=False, priority=True),
         Binding("b", "pick_blue", show=False, priority=True),
         Binding("c", "pick_cyan", show=False, priority=True),
         Binding("w", "pick_white", show=False, priority=True),
         Binding("d", "pick_default", show=False, priority=True),
         Binding("shift+r", "pick_red", show=False, priority=True),
-        Binding("shift+g", "pick_green", show=False, priority=True),
-        Binding("shift+y", "pick_yellow", show=False, priority=True),
         Binding("shift+p", "pick_purple", show=False, priority=True),
         Binding("shift+b", "pick_blue", show=False, priority=True),
         Binding("shift+c", "pick_cyan", show=False, priority=True),
@@ -455,10 +510,6 @@ class NoteColorPaletteScreen(ModalScreen[Optional[str]]):
         text = Text()
         text.append("R ", style="bold white on red")
         text.append("Red\n", style="red")
-        text.append("G ", style="bold black on green")
-        text.append("Green\n", style="green")
-        text.append("Y ", style="bold black on yellow")
-        text.append("Yellow\n", style="yellow")
         text.append("P ", style="bold white on #8a5cff")
         text.append("Purple\n", style="#8a5cff")
         text.append("B ", style="bold white on #1f4ba8")
@@ -481,12 +532,6 @@ class NoteColorPaletteScreen(ModalScreen[Optional[str]]):
 
     def action_pick_red(self) -> None:
         self.pick_color("r")
-
-    def action_pick_green(self) -> None:
-        self.pick_color("g")
-
-    def action_pick_yellow(self) -> None:
-        self.pick_color("y")
 
     def action_pick_purple(self) -> None:
         self.pick_color("p")
@@ -532,6 +577,18 @@ class NoteWriteTextArea(TextArea):
             submit = getattr(self.screen, "submit", None)
             if callable(submit):
                 submit()
+            return
+        focus_previous = getattr(self.screen, "focus_previous_subaction_field", None)
+        if "up" in normalized and callable(focus_previous):
+            event.stop()
+            event.prevent_default()
+            focus_previous()
+            return
+        focus_next = getattr(self.screen, "focus_next_subaction_field", None)
+        if "down" in normalized and callable(focus_next):
+            event.stop()
+            event.prevent_default()
+            focus_next()
             return
         if self.NEWLINE_KEYS & normalized:
             event.stop()
@@ -611,6 +668,18 @@ class SubactionTitleInput(Input):
             submit = getattr(self.screen, "submit", None)
             if callable(submit):
                 submit()
+            return
+        focus_previous = getattr(self.screen, "focus_previous_subaction_field", None)
+        if "up" in normalized and callable(focus_previous):
+            event.stop()
+            event.prevent_default()
+            focus_previous()
+            return
+        focus_next = getattr(self.screen, "focus_next_subaction_field", None)
+        if "down" in normalized and callable(focus_next):
+            event.stop()
+            event.prevent_default()
+            focus_next()
             return
         await super()._on_key(event)
 
@@ -730,12 +799,14 @@ class ActionSubactionScreen(ModalScreen[Optional[dict[str, str]]]):
         *,
         initial_title: str = "",
         initial_notes: str = "",
+        initial_status: str = "Not Started",
         focus_notes: bool = False,
     ) -> None:
         super().__init__()
         self.title = title
         self.initial_title = initial_title
         self.initial_notes = initial_notes
+        self.initial_status = normalize_status_value(initial_status)
         self.focus_notes = focus_notes
 
     def compose(self) -> ComposeResult:
@@ -748,6 +819,8 @@ class ActionSubactionScreen(ModalScreen[Optional[dict[str, str]]]):
                 placeholder=">> Subaction",
                 id="subaction_title_input",
             ),
+            Label("Status", classes="editor_label"),
+            StatusSelect(value=self.initial_status, id="subaction_status_input"),
             Label("Subaction Notes", classes="editor_label"),
             NoteWriteTextArea(
                 self.prepared_notes_text(),
@@ -776,7 +849,7 @@ class ActionSubactionScreen(ModalScreen[Optional[dict[str, str]]]):
 
     @on(Input.Submitted, "#subaction_title_input")
     def subaction_title_submitted(self) -> None:
-        self.notes_input().focus()
+        self.status_input().focus()
 
     def controls(self) -> NoteWriteControls:
         return self.query_one("#subaction_controls", NoteWriteControls)
@@ -786,6 +859,23 @@ class ActionSubactionScreen(ModalScreen[Optional[dict[str, str]]]):
 
     def notes_input(self) -> NoteWriteTextArea:
         return self.query_one("#subaction_notes_input", NoteWriteTextArea)
+
+    def status_input(self) -> StatusSelect:
+        return self.query_one("#subaction_status_input", StatusSelect)
+
+    def focus_previous_subaction_field(self) -> None:
+        focused = self.app.focused
+        if focused is self.notes_input():
+            self.status_input().focus()
+            return
+        self.title_input().focus()
+
+    def focus_next_subaction_field(self) -> None:
+        focused = self.app.focused
+        if focused is self.title_input():
+            self.status_input().focus()
+            return
+        self.notes_input().focus()
 
     def prepared_notes_text(self) -> str:
         if not self.focus_notes:
@@ -800,6 +890,8 @@ class ActionSubactionScreen(ModalScreen[Optional[dict[str, str]]]):
         text = Text()
         text.append("Subaction editor", style="bold")
         text.append("    ")
+        text.append("Status", style="bold yellow")
+        text.append(" Left/Right changes state    ")
         text.append("Tab", style="bold yellow")
         text.append(" save and close    ")
         text.append("Esc", style="bold yellow")
@@ -831,6 +923,7 @@ class ActionSubactionScreen(ModalScreen[Optional[dict[str, str]]]):
         self.dismiss_with_focus_restore(
             {
                 "title": raw_title,
+                "status": self.status_input().value,
                 "notes": self.notes_input().text.rstrip(),
             }
         )
@@ -1244,7 +1337,7 @@ class ActionsTuiApp(App[None]):
 
     @on(ListView.Selected)
     def list_selected(self, event: ListView.Selected) -> None:
-        if self.refreshing_lists or self.navigation_mode == "groups":
+        if self.refreshing_lists or self.navigation_mode == "groups" or not event.list_view.has_focus:
             return
         group = self.group_for_list_id(event.list_view.id or "")
         if group:
@@ -1258,7 +1351,7 @@ class ActionsTuiApp(App[None]):
 
     @on(ListView.Highlighted)
     def list_highlighted(self, event: ListView.Highlighted) -> None:
-        if self.refreshing_lists or self.navigation_mode == "groups":
+        if self.refreshing_lists or self.navigation_mode == "groups" or not event.list_view.has_focus:
             return
         group = self.group_for_list_id(event.list_view.id or "")
         if group:
@@ -1537,6 +1630,13 @@ class ActionsTuiApp(App[None]):
     def focused_action_for_status(self) -> ActionRecord | None:
         return self.focused_action_for_due_date()
 
+    def status_edit_origin(self) -> str:
+        if self.navigation_mode == "detail" and self.opened_key == "group:today":
+            return "today"
+        if self.navigation_mode != "detail" and self.active_group == "today":
+            return "today"
+        return "default"
+
     def entry_key(self, entry: RepresentativeEntry | None) -> str | None:
         if entry is None:
             return None
@@ -1597,7 +1697,7 @@ class ActionsTuiApp(App[None]):
                 f"Table: {table.name if table else 'Unknown'}",
                 f"State: {bucket_name}",
                 f"Due: {action.due_date or 'unscheduled'}",
-                f"Estimate: {action.estimate or '-'}",
+                f"Time: {action.estimate or '-'}",
                 f"Status: {action.status or '-'}",
             ]
             if action.completed_at:
@@ -1614,30 +1714,30 @@ class ActionsTuiApp(App[None]):
     def render_today_overview(self) -> str | Text:
         display_date = self.today_detail_date()
         actions = self.store.today_actions(display_date)
-        lines = [
-            f"Date: {display_date.isoformat()}",
-            f"Actions due: {len(actions)}",
-            "Up/Down moves row focus. Right, Enter, or Tab opens the focused action.",
-            "",
-        ]
+        summary = f"Actions due: {len(actions)}"
         if not actions:
-            lines.append("No actions due on this date.")
-            return "\n".join(lines)
-        table_lines = self.format_action_table(actions, include_table=True)
+            block_lines = ["", *self.plain_table_block_lines(summary, ["No actions due on this date."])]
+            return self.render_lines_with_selection(block_lines)
+        block_lines = ["", *self.plain_table_block_lines(summary, self.format_action_table(actions))]
         if self.opened_key != "group:today" or self.navigation_mode != "detail":
-            return "\n".join(lines + table_lines)
+            return self.render_lines_with_selection(block_lines)
         selected_index = self.detail_today_index_for(len(actions))
-        return self.render_lines_with_selection(lines + table_lines, selected_line_index=len(lines) + 2 + selected_index)
+        return self.render_lines_with_selection(block_lines, selected_line_index=6 + selected_index)
 
     def render_projects_overview(self) -> str | Text:
         tables = self.store.all_tables()
         if not tables:
             return "No projects yet."
         if self.opened_key != "group:projects" or self.navigation_mode != "detail":
-            return "\n\n".join(self.render_table_overview(table) for table in tables)
+            lines: list[str | Text] = []
+            for index, table in enumerate(tables):
+                if index:
+                    lines.append("")
+                lines.extend(self.table_overview_lines(table))
+            return self.render_lines_with_selection(lines)
         selected_table_index = self.detail_projects_table_index_for(len(tables))
         selected_line_indexes: set[int] = set()
-        lines: list[str] = []
+        lines: list[str | Text] = []
         for table_index, table in enumerate(tables):
             if lines:
                 lines.append("")
@@ -1669,11 +1769,15 @@ class ActionsTuiApp(App[None]):
             return "\n".join(lines)
         tables = self.current_archive_tables()
         if self.opened_key != "group:archive" or self.navigation_mode != "detail":
-            sections = [self.render_table_overview(table, group="archive") for table in tables]
-            return "\n".join(lines) + "\n\n".join(sections)
+            detail_lines: list[str | Text] = list(lines)
+            for table in tables:
+                if detail_lines:
+                    detail_lines.append("")
+                detail_lines.extend(self.table_overview_lines(table, group="archive"))
+            return self.render_lines_with_selection(detail_lines)
         selected_table_index = self.detail_archive_table_index_for(len(tables))
         selected_line_indexes: set[int] = set()
-        detail_lines = list(lines)
+        detail_lines: list[str | Text] = list(lines)
         for table_index, table in enumerate(tables):
             if detail_lines:
                 detail_lines.append("")
@@ -1698,37 +1802,28 @@ class ActionsTuiApp(App[None]):
     def render_table_section(self, table: TableRecord, *, group: str = "projects") -> str | Text:
         entry = RepresentativeEntry(kind="table", group=group, label=table.name, table_id=table.id)
         actions = self.actions_for_table_entry(entry)
-        action_label = "Open actions" if group == "projects" else f"{self.archive_title_word()} actions"
-        lines = [
-            table.name,
-            f"{action_label}: {len(actions)}",
-            "Up/Down moves row focus. Right opens the focused action.",
-            "",
-        ]
-        if not actions:
-            empty_label = "active actions" if group == "projects" else self.archive_title_word().lower()
-            lines.append(f"No {empty_label}.")
-            return "\n".join(lines)
-        table_lines = self.format_action_table(actions)
+        block_lines = self.table_overview_lines(table, group=group)
         if self.navigation_mode != "detail":
-            return "\n".join(lines + table_lines)
+            return self.render_lines_with_selection(block_lines)
+        if not actions:
+            return self.render_lines_with_selection(block_lines)
         selected_index = self.detail_table_index_for(table.id, len(actions))
-        return self.render_lines_with_selection(lines + table_lines, selected_line_index=len(lines) + 2 + selected_index)
+        return self.render_lines_with_selection(block_lines, selected_line_index=5 + selected_index)
 
-    def table_overview_lines(self, table: TableRecord, *, group: str = "projects") -> list[str]:
+    def table_overview_lines(self, table: TableRecord, *, group: str = "projects") -> list[str | Text]:
         entry = RepresentativeEntry(kind="table", group=group, label=table.name, table_id=table.id)
         actions = self.actions_for_table_entry(entry)
         action_label = "Open actions" if group == "projects" else f"{self.archive_title_word()} actions"
-        lines = [table.name, f"{action_label}: {len(actions)}", ""]
+        summary = f"{action_label}: {len(actions)}"
         if not actions:
             empty_label = "active actions" if group == "projects" else self.archive_title_word().lower()
-            lines.append(f"No {empty_label}.")
-            return lines
-        lines.extend(self.format_action_table(actions))
-        return lines
+            content_lines = [f"No {empty_label}."]
+            return self.table_block_lines(table.name, summary, content_lines)
+        content_lines = self.format_action_table(actions)
+        return self.table_block_lines(table.name, summary, content_lines)
 
-    def render_table_overview(self, table: TableRecord, *, group: str = "projects") -> str:
-        return "\n".join(self.table_overview_lines(table, group=group))
+    def render_table_overview(self, table: TableRecord, *, group: str = "projects") -> Text:
+        return self.render_lines_with_selection(self.table_overview_lines(table, group=group))
 
     def current_archive_actions(self) -> list[ActionRecord]:
         return self.store.archive_actions() if self.archive_mode == "archive" else self.store.graveyard_actions()
@@ -1788,7 +1883,7 @@ class ActionsTuiApp(App[None]):
         actions = self.actions_for_table_entry(entry)
         if not actions:
             return None
-        return 6 + self.detail_table_index_for(entry.table_id, len(actions))
+        return 5 + self.detail_table_index_for(entry.table_id, len(actions))
 
     def detail_today_index_for(self, total_actions: int) -> int:
         if total_actions <= 0:
@@ -2107,6 +2202,7 @@ class ActionsTuiApp(App[None]):
         note_start_index = 0
         lines.extend(note_lines)
         line_styles: dict[int, str] = {}
+        selected_line_styles: dict[int, str] = {}
         if not bullets:
             return self.render_lines_with_selection(lines, line_styles=line_styles)
         selected_bullet_index = self.detail_note_index_for(action.id, len(bullets))
@@ -2114,12 +2210,15 @@ class ActionsTuiApp(App[None]):
         is_detail_active = self.navigation_mode == "detail"
         for bullet in bullets:
             if not bullet.color:
+                if is_detail_active and bullet.index == selected_bullet_index:
+                    for line_index in range(bullet.start_line, bullet.end_line):
+                        selected_line_styles[note_start_index + line_index] = "bold on #496131"
                 continue
             style = bullet.color
-            if is_detail_active and bullet.index == selected_bullet_index:
-                style = f"bold {bullet.color} on #5a7a1f"
             for line_index in range(bullet.start_line, bullet.end_line):
                 line_styles[note_start_index + line_index] = style
+                if is_detail_active and bullet.index == selected_bullet_index:
+                    selected_line_styles[note_start_index + line_index] = f"bold {bullet.color} on #496131"
         selected_line_indexes = (
             {
                 note_start_index + line_index
@@ -2132,31 +2231,103 @@ class ActionsTuiApp(App[None]):
             lines,
             selected_line_indexes=selected_line_indexes,
             line_styles=line_styles,
+            selected_line_styles=selected_line_styles,
         )
 
     def render_lines_with_selection(
         self,
-        lines: list[str],
+        lines: list[str | Text],
         *,
         selected_line_index: int | None = None,
         selected_line_indexes: set[int] | None = None,
         line_styles: dict[int, str] | None = None,
+        selected_line_styles: dict[int, str] | None = None,
     ) -> Text:
         text = Text()
         active_indexes = set(selected_line_indexes or set())
         style_map = line_styles or {}
+        selected_style_map = selected_line_styles or {}
         if selected_line_index is not None:
             active_indexes.add(selected_line_index)
         for index, line in enumerate(lines):
+            rendered = line.copy() if isinstance(line, Text) else Text(line)
             style = style_map.get(index)
+            if style:
+                rendered.stylize(style)
             if index in active_indexes:
-                style = style or "bold white on #00a651"
+                selected_style = selected_style_map.get(index)
+                if selected_style:
+                    rendered.stylize(selected_style)
+                elif isinstance(line, Text) and rendered.plain.startswith("╭─┤ "):
+                    title_start = len("╭─┤ ")
+                    title_end = rendered.plain.find(" ├", title_start)
+                    if title_end > title_start:
+                        rendered.stylize("bold white on #00a651", title_start, title_end)
+                    else:
+                        rendered.stylize("bold white on #00a651")
+                elif isinstance(line, Text) and rendered.plain.startswith("│ ") and rendered.plain.endswith(" │"):
+                    rendered.stylize("bold white on #00a651", 2, len(rendered.plain) - 2)
+                else:
+                    rendered.stylize("bold white on #00a651")
             elif index == 0:
-                style = f"{style} bold".strip() if style else "bold"
-            text.append(line, style=style)
+                rendered.stylize("bold")
+            text.append_text(rendered)
             if index < len(lines) - 1:
                 text.append("\n")
         return text
+
+    def table_block_inner_width(self) -> int:
+        return max(self.detail_table_width() - 4, 56)
+
+    def style_table_row_line(self, line: str) -> Text:
+        text = Text()
+        border_chars = {"│", "─", "┼"}
+        for char in line:
+            style = TABLE_BORDER_COLOR if char in border_chars else None
+            text.append(char, style=style)
+        return text
+
+    def wrap_table_content_line(self, line: str, inner_width: int) -> Text:
+        text = Text()
+        text.append("│ ", style=TABLE_BORDER_COLOR)
+        text.append_text(self.style_table_row_line(line.ljust(inner_width)))
+        text.append(" │", style=TABLE_BORDER_COLOR)
+        return text
+
+    def table_block_lines(self, title: str, summary: str, content_lines: list[str]) -> list[str | Text]:
+        inner_width = self.table_block_inner_width()
+        title_text = self.summary_cell(title, max(inner_width - 4, 12))
+        top_fill = max(inner_width - len(title_text) - 3, 0)
+        top = Text(style=f"bold {TABLE_BORDER_COLOR}")
+        top.append("╭─┤ ")
+        top.append(title_text, style=f"bold {TABLE_BORDER_COLOR}")
+        top.append(" ├")
+        top.append("─" * top_fill)
+        top.append("╮")
+        divider = Text("├" + "─" * (inner_width + 2) + "┤", style=TABLE_BORDER_COLOR)
+        bottom = Text("╰" + "─" * (inner_width + 2) + "╯", style=TABLE_BORDER_COLOR)
+        lines: list[str | Text] = [
+            top,
+            self.wrap_table_content_line(self.summary_cell(summary, inner_width), inner_width),
+            divider,
+        ]
+        lines.extend(self.wrap_table_content_line(line, inner_width) for line in content_lines)
+        lines.append(bottom)
+        return lines
+
+    def plain_table_block_lines(self, summary: str, content_lines: list[str]) -> list[str | Text]:
+        inner_width = self.table_block_inner_width()
+        top = Text("╭" + "─" * (inner_width + 2) + "╮", style=TABLE_BORDER_COLOR)
+        divider = Text("├" + "─" * (inner_width + 2) + "┤", style=TABLE_BORDER_COLOR)
+        bottom = Text("╰" + "─" * (inner_width + 2) + "╯", style=TABLE_BORDER_COLOR)
+        lines: list[str | Text] = [
+            top,
+            self.wrap_table_content_line(self.summary_cell(summary, inner_width), inner_width),
+            divider,
+        ]
+        lines.extend(self.wrap_table_content_line(line, inner_width) for line in content_lines)
+        lines.append(bottom)
+        return lines
 
     def format_action_table(
         self,
@@ -2169,7 +2340,7 @@ class ActionsTuiApp(App[None]):
         headers = ["Action"]
         if include_table:
             headers.append("Table")
-        headers.extend(["Due", "Estimate", "Status"])
+        headers.extend(["Due", "Time", "Status", "Last Note"])
         if include_completed:
             headers.append("Completed")
         if include_retired:
@@ -2186,6 +2357,7 @@ class ActionsTuiApp(App[None]):
                     self.summary_cell(action.due_date or "-", 10),
                     self.summary_cell(action.estimate or "-", 24),
                     self.summary_cell(action.status or "-", 18),
+                    self.summary_cell(self.last_note_line(action.notes), 80),
                 ]
             )
             if include_completed:
@@ -2193,21 +2365,95 @@ class ActionsTuiApp(App[None]):
             if include_retired:
                 row.append(self.summary_cell(action.retired_at or "-", 10))
             rows.append(row)
-        return self.format_columns(headers, rows)
+        return self.format_columns(headers, rows, total_width=self.table_block_inner_width())
 
-    def format_columns(self, headers: list[str], rows: list[list[str]]) -> list[str]:
-        widths = [len(header) for header in headers]
-        for row in rows:
-            for index, cell in enumerate(row):
-                widths[index] = max(widths[index], len(cell))
+    def detail_table_width(self) -> int:
+        fallback_width = 92
+        try:
+            detail_scroll = self.query_one("#detail_scroll", VerticalScroll)
+            width = int(getattr(detail_scroll.size, "width", 0))
+            if width > 0:
+                return max(width - 2, 64)
+        except Exception:
+            pass
+        return fallback_width
+
+    def column_widths(self, headers: list[str], total_width: int) -> list[int]:
+        preferred = {
+            "Action": 18,
+            "Table": 18,
+            "Due": 10,
+            "Time": 4,
+            "Status": 11,
+            "Last Note": 36,
+            "Completed": 10,
+            "Retired": 10,
+        }
+        minimum = {
+            "Action": 12,
+            "Table": 10,
+            "Due": 10,
+            "Time": 4,
+            "Status": 11,
+            "Last Note": 18,
+            "Completed": 10,
+            "Retired": 10,
+        }
+        widths = [preferred.get(header, len(header)) for header in headers]
+        available = max(total_width - (3 * len(headers) + 1), len(headers))
+        shrink_order = ["Last Note", "Action", "Table"]
+        grow_order = ["Last Note", "Action", "Table"]
+        while sum(widths) > available:
+            changed = False
+            for header in shrink_order:
+                for index, current in enumerate(widths):
+                    if headers[index] != header:
+                        continue
+                    if current <= minimum.get(header, len(header)):
+                        continue
+                    widths[index] -= 1
+                    changed = True
+                    if sum(widths) <= available:
+                        return widths
+            if not changed:
+                break
+        while sum(widths) < available:
+            changed = False
+            for header in grow_order:
+                for index in range(len(widths)):
+                    if headers[index] != header:
+                        continue
+                    widths[index] += 1
+                    changed = True
+                    if sum(widths) >= available:
+                        return widths
+            if not changed:
+                break
+        return widths
+
+    def format_columns(self, headers: list[str], rows: list[list[str]], *, total_width: int) -> list[str]:
+        widths = self.column_widths(headers, total_width)
+
+        def fit(value: str, width: int) -> str:
+            return self.summary_cell(value, width).ljust(width)
 
         def render_row(values: list[str]) -> str:
-            return " | ".join(value.ljust(widths[index]) for index, value in enumerate(values))
+            cells = [fit(values[index], widths[index]) for index in range(len(widths))]
+            return " │ ".join(cells)
 
-        divider = "-+-".join("-" * width for width in widths)
+        divider = "─┼─".join("─" * width for width in widths)
         lines = [render_row(headers), divider]
         lines.extend(render_row(row) for row in rows)
         return lines
+
+    @staticmethod
+    def last_note_line(notes: str) -> str:
+        visible_notes = display_note_text(notes)
+        for line in reversed(visible_notes.splitlines()):
+            stripped = line.strip()
+            if stripped:
+                return stripped
+        return "-"
 
     @staticmethod
     def summary_cell(value: str, limit: int) -> str:
@@ -2487,6 +2733,9 @@ class ActionsTuiApp(App[None]):
             self.update_status("Color works on a focused note bullet")
             return
         action, bullet = current
+        if bullet.prefix.strip().startswith(">>"):
+            self.update_status("Subaction color is controlled by its status")
+            return
         self.push_screen(
             NoteColorPaletteScreen(f"Bullet Color: {action.title}"),
             lambda value: self.finish_note_bullet_color(action.id, bullet.index, value),
@@ -2518,6 +2767,7 @@ class ActionsTuiApp(App[None]):
                     f"Edit subaction: {action.title} [{table_name}]",
                     initial_title=subaction_title,
                     initial_notes=subaction_notes,
+                    initial_status=subaction_status_from_color(bullet.color),
                     focus_notes=True,
                 ),
                 lambda value: self.finish_subaction_bullet_edit(action.id, bullet.index, value),
@@ -2548,7 +2798,12 @@ class ActionsTuiApp(App[None]):
         if not note_text.strip():
             self.update_status("No subaction saved")
             return
-        action = self.store.update_action_note_bullet(action_id, bullet_index, note_text)
+        action = self.store.update_action_note_bullet(
+            action_id,
+            bullet_index,
+            note_text,
+            color=subaction_color_for_status(payload.get("status", "Started")),
+        )
         self.refresh_all()
         self.update_status(f"Updated subaction on {action.title}")
 
@@ -2663,7 +2918,12 @@ class ActionsTuiApp(App[None]):
         if not note_text.strip():
             self.update_status("No subaction saved")
             return
-        action = self.store.append_action_note(action_id, note_text, prefix=">> ", color=SUBACTION_COLOR)
+        action = self.store.append_action_note(
+            action_id,
+            note_text,
+            prefix=">> ",
+            color=subaction_color_for_status(payload.get("status", "Not Started")),
+        )
         self.seed_last_note_focus(action.id)
         self.selected_key = f"action:{action.id}"
         self.opened_key = f"action:{action.id}"
@@ -2683,7 +2943,7 @@ class ActionsTuiApp(App[None]):
             bullet_index,
             note_text,
             prefix=">> ",
-            color=SUBACTION_COLOR,
+            color=subaction_color_for_status(payload.get("status", "Not Started")),
         )
         self.detail_note_indexes[action.id] = bullet_index + 1
         self.selected_key = f"action:{action.id}"
@@ -2777,20 +3037,48 @@ class ActionsTuiApp(App[None]):
         if action is None:
             self.update_status("Status works on a focused action")
             return
+        origin = self.status_edit_origin()
         self.push_screen(
             StatusPickerScreen(f"Status: {action.title}", action.status),
-            lambda value: self.finish_edit_status(action.id, value),
+            lambda value: self.finish_edit_status(action.id, value, origin),
         )
 
-    def finish_edit_status(self, action_id: str, value: str | None) -> None:
+    def restore_today_focus(self, action_id: str) -> None:
+        self.active_group = "today"
+        today_entries = self.group_entries.get("today", [])
+        target_index = next((index for index, entry in enumerate(today_entries) if entry.action_id == action_id), None)
+        list_view = self.query_one("#today_list", ListView)
+        if target_index is None:
+            if today_entries:
+                target_index = min(self.group_indexes.get("today", 0), len(today_entries) - 1)
+                self.group_indexes["today"] = target_index
+                list_view.index = target_index
+                self.selected_key = self.entry_key(today_entries[target_index])
+            else:
+                self.group_indexes["today"] = 0
+                list_view.index = 0
+                self.selected_key = "group:today"
+        else:
+            self.group_indexes["today"] = target_index
+            list_view.index = target_index
+            self.selected_key = f"action:{action_id}"
+        self.opened_key = "group:today"
+        self.apply_focus_state()
+        self.update_details(reset_scroll=False)
+
+    def finish_edit_status(self, action_id: str, value: str | None, origin: str = "default") -> None:
         if value is None:
             self.update_status("Cancelled status edit")
             return
         action = self.store.set_action_status(action_id, value)
-        self.selected_key = f"action:{action.id}"
-        self.seed_last_note_focus(action.id)
-        self.opened_key = f"action:{action.id}"
-        self.refresh_all()
+        if origin == "today":
+            self.refresh_all()
+            self.restore_today_focus(action.id)
+        else:
+            self.selected_key = f"action:{action.id}"
+            self.seed_last_note_focus(action.id)
+            self.opened_key = f"action:{action.id}"
+            self.refresh_all()
         bucket_name, _ = self.store.action_by_id(action.id) or ("active", action)
         if bucket_name == "archive":
             self.update_status(f"Marked {action.title} completed and moved it to Completed")
