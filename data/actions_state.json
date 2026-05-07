@@ -181,10 +181,10 @@
       "title": "Bug List",
       "due_date": "2026-05-06",
       "estimate": "",
-      "notes": "- [color:green] Remove Magenta from pallet\n- [color:green] Blue should be called purple, also add a blue\n- [color:green] when I change the color of a font it no longer highlights when it is focused on\n- [color:green] Remove the capability to retire from the projects or today groups. x should only work inside archive. also, there should be warning box that popps up asking if you're sure\n- [color:green] Unable to toggle up and down in the today detail view\n- [color:green] when in the projects detail view, it should open already scrolled to where I can see the item focused on. that doesn't always happen\n- [color:green] I'd like the tables in the detail view to all be the same width. currently they're all different sizes. Also would be nice if they were somewhat stylized like the rest of the tui is\n- [color:cyan] I'd like the completed box to show the tables of all the actions represented, not actually all the actions. if I go into the detailed view of the completed list, then show all the tables with their relevent actions\n- [color:green] When I hit n and open the new note window, I don't want the backround to become opaque, I'd prefer it to become faded as if I'm looking through dark glass. Same with all the windows I open, not just the new note\n- [color:green] I don't want the capability to retire something just like that. Only from the Completed section and only after a Confirmation window that requires me to confirm that I want to delete something\n- [color:green] I want the All Actions, All Projects, All completed headers in the left pane boxes to be removed. Focusing on those boxes should open the boxes detail view on the right pane automatically\n- [color:green] The name of the boxes should be stilized and a different color, lets say the same color as the box. so when the box isn't in focus, it should be yellow and when it is in focus it should be green?\n- [color:green] In the actions detail view, I want a visual separation between the table info up top and the notes section that I write in, Ideally it's stylized with a line or someother boundary\n- [color:green] When opening the detailed view of an action, I want the focus to automatically be on the last bullet\n- [color:cyan] Make the subaction have the option to complete. this should turn it's color to green. Remove green as an option for normal notes",
+      "notes": "- [color:green] Remove Magenta from pallet\n- [color:green] Blue should be called purple, also add a blue\n- [color:green] when I change the color of a font it no longer highlights when it is focused on\n- [color:green] Remove the capability to retire from the projects or today groups. x should only work inside archive. also, there should be warning box that popps up asking if you're sure\n- [color:green] Unable to toggle up and down in the today detail view\n- [color:green] when in the projects detail view, it should open already scrolled to where I can see the item focused on. that doesn't always happen\n- [color:green] I'd like the tables in the detail view to all be the same width. currently they're all different sizes. Also would be nice if they were somewhat stylized like the rest of the tui is\n- [color:cyan] I'd like the completed box to show the tables of all the actions represented, not actually all the actions. if I go into the detailed view of the completed list, then show all the tables with their relevent actions\n- [color:green] When I hit n and open the new note window, I don't want the backround to become opaque, I'd prefer it to become faded as if I'm looking through dark glass. Same with all the windows I open, not just the new note\n- [color:green] I don't want the capability to retire something just like that. Only from the Completed section and only after a Confirmation window that requires me to confirm that I want to delete something\n- [color:green] I want the All Actions, All Projects, All completed headers in the left pane boxes to be removed. Focusing on those boxes should open the boxes detail view on the right pane automatically\n- [color:green] The name of the boxes should be stilized and a different color, lets say the same color as the box. so when the box isn't in focus, it should be yellow and when it is in focus it should be green?\n- [color:green] In the actions detail view, I want a visual separation between the table info up top and the notes section that I write in, Ideally it's stylized with a line or someother boundary\n- [color:#2f6dff] When opening the detailed view of an action, I want the focus to automatically be on the last bullet\n- [color:white] Make the subaction have the option to complete. this should turn it's color to green. Remove green as an option for normal notes\n- [color:cyan] a new note\n- a new note again\n- [color:cyan] another new note\n- and again and again",
       "status": "",
       "created_at": "2026-05-03T04:00:48Z",
-      "updated_at": "2026-05-07T03:34:39Z",
+      "updated_at": "2026-05-07T04:16:52Z",
       "completed_at": "",
       "retired_at": ""
     },
@@ -514,9 +514,7 @@
       "updated_at": "2026-05-06T02:43:18Z",
       "completed_at": "2026-05-06T02:43:18Z",
       "retired_at": ""
-    }
-  ],
-  "graveyard": [
+    },
     {
       "id": "arc_728f5a7cf340",
       "table_id": "table_athena",
@@ -527,8 +525,8 @@
       "status": "Started",
       "created_at": "2026-04-26T15:20:11Z",
       "updated_at": "2026-05-03T03:47:18Z",
-      "completed_at": "",
-      "retired_at": "2026-05-03T03:47:18Z"
+      "completed_at": "2026-05-03T03:47:18Z",
+      "retired_at": ""
     },
     {
       "id": "arc_410376152bed",
@@ -541,7 +539,7 @@
       "created_at": "2026-04-26T15:20:11Z",
       "updated_at": "2026-05-03T03:47:49Z",
       "completed_at": "2026-04-26T15:20:11Z",
-      "retired_at": "2026-05-03T03:47:49Z"
+      "retired_at": ""
     },
     {
       "id": "arc_74a1eaf249b3",
@@ -554,7 +552,7 @@
       "created_at": "2026-04-26T15:20:11Z",
       "updated_at": "2026-05-03T03:47:58Z",
       "completed_at": "2026-04-26T15:20:11Z",
-      "retired_at": "2026-05-03T03:47:58Z"
+      "retired_at": ""
     },
     {
       "id": "act_62728c21b585",
@@ -567,7 +565,7 @@
       "created_at": "2026-04-26T15:20:11Z",
       "updated_at": "2026-05-03T03:48:12Z",
       "completed_at": "2026-05-03T03:43:40Z",
-      "retired_at": "2026-05-03T03:48:12Z"
+      "retired_at": ""
     },
     {
       "id": "arc_a9d75b7a1427",
@@ -580,7 +578,7 @@
       "created_at": "2026-04-26T15:20:11Z",
       "updated_at": "2026-05-03T03:48:38Z",
       "completed_at": "2026-04-26T15:20:11Z",
-      "retired_at": "2026-05-03T03:48:38Z"
+      "retired_at": ""
     },
     {
       "id": "arc_e0381558d847",
@@ -593,7 +591,7 @@
       "created_at": "2026-04-26T15:20:11Z",
       "updated_at": "2026-05-03T03:48:46Z",
       "completed_at": "2026-04-26T15:20:11Z",
-      "retired_at": "2026-05-03T03:48:46Z"
+      "retired_at": ""
     },
     {
       "id": "arc_c2395d695b4b",
@@ -606,7 +604,7 @@
       "created_at": "2026-04-26T15:20:11Z",
       "updated_at": "2026-05-03T03:48:50Z",
       "completed_at": "2026-04-26T15:20:11Z",
-      "retired_at": "2026-05-03T03:48:50Z"
+      "retired_at": ""
     },
     {
       "id": "arc_1615a0cb83d8",
@@ -619,7 +617,7 @@
       "created_at": "2026-04-26T15:20:11Z",
       "updated_at": "2026-05-03T03:48:53Z",
       "completed_at": "2026-04-26T15:20:11Z",
-      "retired_at": "2026-05-03T03:48:53Z"
+      "retired_at": ""
     },
     {
       "id": "arc_76e6f4aa08b7",
@@ -632,7 +630,7 @@
       "created_at": "2026-04-26T15:20:11Z",
       "updated_at": "2026-05-03T03:48:56Z",
       "completed_at": "2026-04-26T15:20:11Z",
-      "retired_at": "2026-05-03T03:48:56Z"
+      "retired_at": ""
     },
     {
       "id": "arc_04ce4799dfb8",
@@ -645,7 +643,7 @@
       "created_at": "2026-04-26T15:20:11Z",
       "updated_at": "2026-05-03T03:49:00Z",
       "completed_at": "2026-04-26T15:20:11Z",
-      "retired_at": "2026-05-03T03:49:00Z"
+      "retired_at": ""
     },
     {
       "id": "arc_9b1f749cc38e",
@@ -658,7 +656,7 @@
       "created_at": "2026-04-26T15:20:11Z",
       "updated_at": "2026-05-03T03:49:04Z",
       "completed_at": "2026-04-26T15:20:11Z",
-      "retired_at": "2026-05-03T03:49:04Z"
+      "retired_at": ""
     },
     {
       "id": "act_90c93237fc1a",
@@ -670,8 +668,8 @@
       "status": "Started",
       "created_at": "2026-05-03T03:49:43Z",
       "updated_at": "2026-05-03T03:59:53Z",
-      "completed_at": "",
-      "retired_at": "2026-05-03T03:59:53Z"
+      "completed_at": "2026-05-03T03:59:53Z",
+      "retired_at": ""
     },
     {
       "id": "act_f4e2bf451966",
@@ -684,7 +682,7 @@
       "created_at": "2026-04-26T15:20:11Z",
       "updated_at": "2026-05-03T14:56:47Z",
       "completed_at": "2026-05-03T14:56:23Z",
-      "retired_at": "2026-05-03T14:56:47Z"
+      "retired_at": ""
     },
     {
       "id": "arc_601b8776ae9e",
@@ -697,7 +695,7 @@
       "created_at": "2026-04-26T15:20:11Z",
       "updated_at": "2026-05-03T14:59:48Z",
       "completed_at": "2026-04-26T15:20:11Z",
-      "retired_at": "2026-05-03T14:59:48Z"
+      "retired_at": ""
     },
     {
       "id": "arc_43fc66f5a48c",
@@ -710,9 +708,10 @@
       "created_at": "2026-04-26T15:20:11Z",
       "updated_at": "2026-05-03T14:59:56Z",
       "completed_at": "2026-04-26T15:20:11Z",
-      "retired_at": "2026-05-03T14:59:56Z"
+      "retired_at": ""
     }
   ],
+  "graveyard": [],
   "retired_tables": [
     {
       "id": "table_eitan_s_presentation_3a2a",

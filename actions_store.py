@@ -261,7 +261,10 @@ class ActionsStore:
         self.workbook_path = workbook_path
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self.state = self._load_or_seed()
+        changed = self.normalize_legacy_graveyard()
         if self.normalize_active_action_dates():
+            changed = True
+        if changed:
             self.save()
 
     def _load_or_seed(self) -> ActionState:
@@ -461,7 +464,7 @@ class ActionsStore:
         return sorted(self.state.archive, key=self._sort_key)
 
     def graveyard_actions(self) -> list[ActionRecord]:
-        return sorted(self.state.graveyard, key=self._sort_key)
+        return []
 
     def today_actions(self, selected_date: date) -> list[ActionRecord]:
         target = selected_date.isoformat()
@@ -480,7 +483,7 @@ class ActionsStore:
         return None
 
     def action_by_id(self, action_id: str) -> tuple[str, ActionRecord] | None:
-        for bucket_name in ("active", "archive", "graveyard"):
+        for bucket_name in ("active", "archive"):
             bucket = getattr(self.state, bucket_name)
             for item in bucket:
                 if item.id == action_id:
@@ -718,19 +721,13 @@ class ActionsStore:
         return action
 
     def retire_action(self, action_id: str) -> ActionRecord:
-        bucket_name, action = self._remove_any(action_id, allowed=("active", "archive"))
-        if bucket_name == "archive" and not action.completed_at:
-            action.completed_at = utc_now_iso()
-        action.retired_at = utc_now_iso()
-        action.updated_at = action.retired_at
-        self.state.graveyard.append(action)
+        action = self._remove_from_bucket("archive", action_id)
+        action.updated_at = utc_now_iso()
         self.save()
         return action
 
     def restore_action(self, action_id: str) -> ActionRecord:
-        bucket_name, action = self._remove_any(action_id, allowed=("archive", "graveyard"))
-        if bucket_name == "graveyard":
-            action.retired_at = ""
+        action = self._remove_from_bucket("archive", action_id)
         self._restore_retired_table(action.table_id)
         action.updated_at = utc_now_iso()
         self.state.active.append(action)
@@ -739,8 +736,21 @@ class ActionsStore:
         return action
 
     def delete_graveyard_action(self, action_id: str) -> None:
-        self._remove_from_bucket("graveyard", action_id)
+        self._remove_from_bucket("archive", action_id)
         self.save()
+
+    def normalize_legacy_graveyard(self) -> bool:
+        if not self.state.graveyard:
+            return False
+        for action in self.state.graveyard:
+            if not action.completed_at:
+                action.completed_at = action.retired_at or utc_now_iso()
+            action.retired_at = ""
+            if not action.status:
+                action.status = "Completed"
+            self.state.archive.append(action)
+        self.state.graveyard = []
+        return True
 
     def _remove_any(self, action_id: str, *, allowed: tuple[str, ...]) -> tuple[str, ActionRecord]:
         for bucket_name in allowed:

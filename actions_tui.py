@@ -29,8 +29,8 @@ SUBACTION_COMPLETED_COLOR = "#00a651"
 TABLE_BORDER_COLOR = "#2f6b3c"
 NOTE_BULLET_COLORS = {
     "r": ("red", "Red"),
-    "p": ("#8a5cff", "Purple"),
-    "b": ("#1f4ba8", "Blue"),
+    "p": ("#a970ff", "Purple"),
+    "b": ("#2f6dff", "Blue"),
     "c": ("cyan", "Cyan"),
     "w": ("white", "White"),
     "d": ("", "Default"),
@@ -302,11 +302,9 @@ class HelpScreen(ModalScreen[None]):
                         "E: edit the selected action or rename the selected project",
                         "A: in full action detail add a subaction; otherwise add action to the selected project",
                         "C: complete active action to Completed",
-                        "X: delete the focused note bullet, or in Completed move the action to Graveyard after confirmation",
-                        "V: toggle the Completed section between Completed and Graveyard",
-                        "U: restore from Completed or Graveyard",
+                        "X: delete the focused note bullet, or permanently delete the focused completed action after confirmation",
+                        "U: restore from Completed",
                         "D: edit the due date of the focused action",
-                        "Delete: permanently delete from Graveyard",
                         "[ or ]: move the Today date backward or forward",
                         "Q: quit",
                     ]
@@ -510,10 +508,10 @@ class NoteColorPaletteScreen(ModalScreen[Optional[str]]):
         text = Text()
         text.append("R ", style="bold white on red")
         text.append("Red\n", style="red")
-        text.append("P ", style="bold white on #8a5cff")
-        text.append("Purple\n", style="#8a5cff")
-        text.append("B ", style="bold white on #1f4ba8")
-        text.append("Blue\n", style="#1f4ba8")
+        text.append("P ", style="bold white on #a970ff")
+        text.append("Purple\n", style="#a970ff")
+        text.append("B ", style="bold white on #2f6dff")
+        text.append("Blue\n", style="#2f6dff")
         text.append("C ", style="bold black on cyan")
         text.append("Cyan\n", style="cyan")
         text.append("W ", style="bold black on white")
@@ -603,6 +601,9 @@ class NoteWriteTextArea(TextArea):
         await super()._on_key(event)
 
     def on_focus(self, _: events.Focus) -> None:
+        self.call_after_refresh(lambda: ActionNoteScreen.ensure_text_area_cursor_visible(self))
+        self.set_timer(0.05, lambda: ActionNoteScreen.ensure_text_area_cursor_visible(self))
+        self.set_timer(0.15, lambda: ActionNoteScreen.ensure_text_area_cursor_visible(self))
         refresh = getattr(self.screen, "refresh_controls_display", None)
         if callable(refresh):
             refresh()
@@ -726,7 +727,14 @@ class ActionNoteScreen(ModalScreen[Optional[str]]):
         if self.initial_text:
             lines = self.initial_text.splitlines()
             text_area.cursor_location = (len(lines) - 1, len(lines[-1]))
+            self.call_after_refresh(lambda: self.ensure_text_area_cursor_visible(text_area))
+            self.set_timer(0.05, lambda: self.ensure_text_area_cursor_visible(text_area))
         self.refresh_controls_display()
+
+    @staticmethod
+    def ensure_text_area_cursor_visible(text_area: NoteWriteTextArea) -> None:
+        text_area.scroll_end(animate=False, immediate=True, x_axis=False)
+        text_area.scroll_cursor_visible(animate=False)
 
     def text_area(self) -> NoteWriteTextArea:
         return self.query_one("#write_text_input", NoteWriteTextArea)
@@ -842,6 +850,8 @@ class ActionSubactionScreen(ModalScreen[Optional[dict[str, str]]]):
             if notes_input.text:
                 lines = notes_input.text.split("\n")
                 notes_input.cursor_location = (len(lines) - 1, len(lines[-1]))
+                self.call_after_refresh(lambda: ActionNoteScreen.ensure_text_area_cursor_visible(notes_input))
+                self.set_timer(0.05, lambda: ActionNoteScreen.ensure_text_area_cursor_visible(notes_input))
         else:
             title_input.focus()
             title_input.cursor_position = len(title_input.value)
@@ -1194,12 +1204,10 @@ class ActionsTuiApp(App[None]):
         Binding("shift+s", "edit_status", show=False, priority=True),
         Binding("a", "new_action", "Add"),
         Binding("c", "complete_action", "Complete"),
-        Binding("x", "retire_action", "Retire"),
+        Binding("x", "retire_action", "Delete"),
         Binding("u", "restore_action", "Restore"),
         Binding("d", "edit_due_date", "Due Date"),
         Binding("shift+d", "edit_due_date", show=False, priority=True),
-        Binding("delete", "delete_graveyard", "Delete"),
-        Binding("v", "toggle_archive_mode", "Completed/Grave"),
         Binding("r", "refresh_data", "Color"),
         Binding("shift+r", "refresh_data", show=False, priority=True),
         Binding("open_bracket", "prev_day", "Prev Day"),
@@ -1213,7 +1221,6 @@ class ActionsTuiApp(App[None]):
         self.base_dir = base_dir or Path(__file__).resolve().parent
         self.store = ActionsStore(self.base_dir, workbook_path=workbook_path or DEFAULT_WORKBOOK)
         self.selected_date = self.default_selected_date()
-        self.archive_mode = "archive"
         self.group_ids = ["today", "projects", "archive"]
         self.group_list_ids = {
             "today": "today_list",
@@ -1255,6 +1262,7 @@ class ActionsTuiApp(App[None]):
         self.detail_archive_action_indexes: dict[str, int] = {}
         self.refreshing_lists = False
         self.status_text = "Loaded actions prototype"
+        self.last_detail_pane_width = 0
 
     def default_selected_date(self) -> date:
         actual_today = date.today()
@@ -1334,6 +1342,23 @@ class ActionsTuiApp(App[None]):
 
     def on_mount(self) -> None:
         self.refresh_all()
+        self.set_interval(0.1, self.refresh_detail_for_width_change)
+
+    def on_resize(self, _: events.Resize) -> None:
+        if not self.is_mounted:
+            return
+        self.call_after_refresh(self.refresh_detail_for_width_change)
+
+    def refresh_detail_for_width_change(self) -> None:
+        try:
+            detail_pane = self.query_one("#detail_pane", Vertical)
+            width = int(getattr(detail_pane.size, "width", 0))
+        except Exception:
+            return
+        if width <= 0 or width == self.last_detail_pane_width:
+            return
+        self.last_detail_pane_width = width
+        self.update_details(reset_scroll=False)
 
     @on(ListView.Selected)
     def list_selected(self, event: ListView.Selected) -> None:
@@ -1363,9 +1388,10 @@ class ActionsTuiApp(App[None]):
             self.apply_focus_state()
 
     def refresh_all(self) -> None:
+        preserve_detail_scroll = self.navigation_mode == "detail" and (self.opened_key or "").startswith("action:")
         self.refresh_representative_pane()
         self.apply_focus_state()
-        self.update_details()
+        self.update_details(reset_scroll=not preserve_detail_scroll)
         self.update_status(self.status_text)
 
     def refresh_representative_pane(self) -> None:
@@ -1375,8 +1401,7 @@ class ActionsTuiApp(App[None]):
             self.active_group = selected_group
         self.query_one("#today_group_title", Static).update(f"Today ({len(self.group_entries['today'])})")
         self.query_one("#projects_group_title", Static).update(f"Projects ({len(self.group_entries['projects'])})")
-        archive_mode = "Completed" if self.archive_mode == "archive" else "Graveyard"
-        self.query_one("#archive_group_title", Static).update(f"Completed [{archive_mode}] ({len(self.group_entries['archive'])})")
+        self.query_one("#archive_group_title", Static).update(f"Completed ({len(self.group_entries['archive'])})")
         self.refreshing_lists = True
         for group in self.group_ids:
             self.populate_group_list(group, self.group_entries[group])
@@ -1556,7 +1581,7 @@ class ActionsTuiApp(App[None]):
                 return None
             bucket_name, action = found
             table = self.store.table_for_id(action.table_id)
-            group = "archive" if bucket_name in {"archive", "graveyard"} else "projects"
+            group = "archive" if bucket_name == "archive" else "projects"
             return RepresentativeEntry(
                 kind="action",
                 group=group,
@@ -1653,12 +1678,34 @@ class ActionsTuiApp(App[None]):
         self.query_one("#detail_title", Static).update(title)
         self.query_one("#detail_body", Static).update(body)
         detail_scroll = self.query_one("#detail_scroll", VerticalScroll)
+        if self.should_scroll_action_detail_to_bottom():
+            self.scroll_detail_to_bottom(detail_scroll)
+            return
         target_line = self.current_detail_scroll_line()
         if target_line is not None:
             self.ensure_detail_line_visible(detail_scroll, target_line, reset_scroll=reset_scroll)
             return
         if reset_scroll:
             detail_scroll.scroll_home(animate=False)
+
+    def should_scroll_action_detail_to_bottom(self) -> bool:
+        detail_action = self.current_action_detail_action()
+        if detail_action is None:
+            return False
+        bullets = self.detail_note_bullets_for(detail_action)
+        if not bullets:
+            return False
+        selected_index = self.detail_note_index_for(detail_action.id, len(bullets))
+        return selected_index == len(bullets) - 1
+
+    def scroll_detail_to_bottom(self, detail_scroll: VerticalScroll) -> None:
+        def apply() -> None:
+            detail_scroll.scroll_end(animate=False, immediate=True, x_axis=False)
+
+        apply()
+        self.call_after_refresh(apply)
+        self.set_timer(0.05, apply)
+        self.set_timer(0.15, apply)
 
     def ensure_detail_line_visible(self, detail_scroll: VerticalScroll, target_line: int, *, reset_scroll: bool) -> None:
         viewport_height = max(int(getattr(detail_scroll.size, "height", 0)), 1)
@@ -1826,14 +1873,14 @@ class ActionsTuiApp(App[None]):
         return self.render_lines_with_selection(self.table_overview_lines(table, group=group))
 
     def current_archive_actions(self) -> list[ActionRecord]:
-        return self.store.archive_actions() if self.archive_mode == "archive" else self.store.graveyard_actions()
+        return self.store.archive_actions()
 
     def current_archive_tables(self) -> list[TableRecord]:
         archive_table_ids = {action.table_id for action in self.current_archive_actions()}
         return [table for table in self.store.all_known_tables() if table.id in archive_table_ids]
 
     def archive_title_word(self) -> str:
-        return "Completed" if self.archive_mode == "archive" else "Graveyard"
+        return "Completed"
 
     def current_detail_scroll_line(self) -> int | None:
         if self.opened_key == "group:today" and self.navigation_mode == "detail":
@@ -1875,6 +1922,20 @@ class ActionsTuiApp(App[None]):
                 block_lines = self.table_overview_lines(table, group="archive")
                 lines_before += len(block_lines) + 1
             return None
+        detail_action = self.current_action_detail_action()
+        if detail_action is not None:
+            bullets = self.detail_note_bullets_for(detail_action)
+            if not bullets:
+                return None
+            selected_bullet_index = self.detail_note_index_for(detail_action.id, len(bullets))
+            selected_bullet = bullets[selected_bullet_index]
+            info_line_count = 5
+            if detail_action.completed_at:
+                info_line_count += 1
+            if detail_action.retired_at:
+                info_line_count += 1
+            note_start_line = info_line_count + 3
+            return note_start_line + selected_bullet.end_line - 1
         if self.navigation_mode != "detail":
             return None
         entry = self.entry_for_key(self.opened_key)
@@ -2665,12 +2726,6 @@ class ActionsTuiApp(App[None]):
         self.refresh_all()
         self.update_status(f"Today pane moved to {self.selected_date.isoformat()}")
 
-    def action_toggle_archive_mode(self) -> None:
-        self.selected_key = "group:archive"
-        self.archive_mode = "graveyard" if self.archive_mode == "archive" else "archive"
-        self.refresh_all()
-        self.update_status(f"Completed pane switched to {self.archive_title_word()}")
-
     def action_new_table(self) -> None:
         if self.active_group != "projects":
             self.update_status("New table works from the Projects section")
@@ -3129,15 +3184,12 @@ class ActionsTuiApp(App[None]):
         if found is None:
             self.update_status("No action selected")
             return
-        if found[0] == "graveyard":
-            self.update_status("Action is already in the graveyard")
-            return
-        if found[0] != "archive" or self.archive_mode != "archive" or self.find_group_for_key(self.opened_key) != "archive":
-            self.update_status("Retire works from Completed only")
+        if found[0] != "archive" or self.find_group_for_key(self.opened_key) != "archive":
+            self.update_status("Delete works from Completed only")
             return
         self.push_screen(
-            ConfirmScreen(f"Delete '{action.title}' from Completed and move it to Graveyard?"),
-            lambda confirmed: self.finish_retire_action(action.id, action.title, confirmed),
+            ConfirmScreen(f"Permanently delete '{action.title}' from Completed?", default_accept=False),
+            lambda confirmed: self.finish_delete_completed_action(action.id, action.title, confirmed),
         )
 
     def finish_retire_table(self, table_id: str, title: str, confirmed: bool) -> None:
@@ -3162,17 +3214,17 @@ class ActionsTuiApp(App[None]):
         self.refresh_all()
         self.update_status(f"Deleted project {title}")
 
-    def finish_retire_action(self, action_id: str, title: str, confirmed: bool) -> None:
+    def finish_delete_completed_action(self, action_id: str, title: str, confirmed: bool) -> None:
         if not confirmed:
-            self.update_status("Cancelled retire")
+            self.update_status("Cancelled delete")
             return
-        self.store.retire_action(action_id)
+        self.store.delete_graveyard_action(action_id)
         self.selected_key = "group:archive"
         self.opened_key = "group:archive"
         self.navigation_mode = "detail"
         self.return_mode = "groups"
         self.refresh_all()
-        self.update_status(f"Moved {title} to graveyard")
+        self.update_status(f"Deleted {title} from Completed")
 
     def finish_delete_note_bullet(self, action_id: str, title: str, bullet_index: int, confirmed: bool) -> None:
         if not confirmed:
@@ -3195,8 +3247,8 @@ class ActionsTuiApp(App[None]):
             self.update_status("No action selected")
             return
         found = self.store.action_by_id(action.id)
-        if found is None or found[0] not in {"archive", "graveyard"}:
-            self.update_status("Restore works from Completed or Graveyard")
+        if found is None or found[0] != "archive":
+            self.update_status("Restore works from Completed")
             return
         self.store.restore_action(action.id)
         self.selected_key = f"action:{action.id}"
@@ -3204,29 +3256,6 @@ class ActionsTuiApp(App[None]):
         self.opened_key = f"action:{action.id}"
         self.refresh_all()
         self.update_status(f"Restored {action.title} to active")
-
-    def action_delete_graveyard(self) -> None:
-        action = self.current_action()
-        found = self.store.action_by_id(action.id) if action else None
-        if self.archive_mode != "graveyard" or found is None or found[0] != "graveyard":
-            self.update_status("Delete is only available in Graveyard view")
-            return
-        self.push_screen(
-            ConfirmScreen(f"Permanently delete '{action.title}' from the graveyard?"),
-            lambda confirmed: self.finish_delete_graveyard(action.id, action.title, confirmed),
-        )
-
-    def finish_delete_graveyard(self, action_id: str, title: str, confirmed: bool) -> None:
-        if not confirmed:
-            self.update_status("Cancelled delete")
-            return
-        self.store.delete_graveyard_action(action_id)
-        self.selected_key = "group:archive"
-        self.opened_key = "group:archive"
-        self.navigation_mode = "detail"
-        self.return_mode = "groups"
-        self.refresh_all()
-        self.update_status(f"Deleted {title} from graveyard")
 
     def action_refresh_data(self) -> None:
         if self.current_detail_note_bullet() is not None:
