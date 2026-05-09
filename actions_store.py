@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import uuid
 import zipfile
@@ -13,6 +14,8 @@ from xml.etree import ElementTree as ET
 
 WORKBOOK_NS = {"a": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
 REL_NS = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id"
+APP_DATA_DIR_NAME = "ActionsTui"
+STATE_FILE_NAME = "actions_state.json"
 
 
 def utc_now_iso() -> str:
@@ -46,6 +49,19 @@ def slugify_name(name: str) -> str:
 def display_table_name(raw_name: str) -> str:
     text = (raw_name or "").replace("_", " ").strip()
     return text or "Untitled Table"
+
+
+def default_data_dir(base_dir: Path) -> Path:
+    override = os.environ.get("ACTIONS_TUI_DATA_DIR", "").strip()
+    if override:
+        return Path(override).expanduser()
+    repo_dir = Path(__file__).resolve().parent
+    if base_dir.resolve() != repo_dir.resolve():
+        return base_dir / "data"
+    local_app_data = os.environ.get("LOCALAPPDATA", "").strip()
+    if local_app_data:
+        return Path(local_app_data) / APP_DATA_DIR_NAME
+    return base_dir / "data"
 
 
 NOTE_BULLET_RE = re.compile(r"^(?P<prefix>\s*(?:->|>>|[-*•]|\d+[.)])\s*)(?P<text>.*)$")
@@ -256,8 +272,10 @@ class NoteBullet:
 class ActionsStore:
     def __init__(self, base_dir: Path, workbook_path: Path | None = None) -> None:
         self.base_dir = base_dir
-        self.data_dir = base_dir / "data"
-        self.state_path = self.data_dir / "actions_state.json"
+        self.repo_data_dir = base_dir / "data"
+        self.repo_state_path = self.repo_data_dir / STATE_FILE_NAME
+        self.data_dir = default_data_dir(base_dir)
+        self.state_path = self.data_dir / STATE_FILE_NAME
         self.workbook_path = workbook_path
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self.state = self._load_or_seed()
@@ -270,6 +288,11 @@ class ActionsStore:
     def _load_or_seed(self) -> ActionState:
         if self.state_path.exists():
             return self._load_state()
+        if self.repo_state_path != self.state_path and self.repo_state_path.exists():
+            state = self._load_state_path(self.repo_state_path)
+            self.state = state
+            self.save()
+            return state
         state = self.import_workbook(self.workbook_path) if self.workbook_path and self.workbook_path.exists() else self.empty_state()
         self.state = state
         self.save()
@@ -279,7 +302,10 @@ class ActionsStore:
         return ActionState(version=1, tables=[], active=[], archive=[], graveyard=[], retired_tables=[])
 
     def _load_state(self) -> ActionState:
-        raw = json.loads(self.state_path.read_text(encoding="utf-8-sig"))
+        return self._load_state_path(self.state_path)
+
+    def _load_state_path(self, state_path: Path) -> ActionState:
+        raw = json.loads(state_path.read_text(encoding="utf-8-sig"))
         return ActionState(
             version=raw.get("version", 1),
             tables=[TableRecord(**item) for item in raw.get("tables", [])],

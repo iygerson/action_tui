@@ -8,7 +8,7 @@ $repoRoot = $PSScriptRoot
 $venvDir = Join-Path $repoRoot ".venv"
 $pythonExe = Join-Path $venvDir "Scripts\python.exe"
 $requirementsFile = Join-Path $repoRoot "requirements.txt"
-$stateDir = Join-Path $repoRoot "data"
+$stateDir = Join-Path ([Environment]::GetFolderPath("LocalApplicationData")) "ActionsTui"
 $stateFile = Join-Path $stateDir "actions_state.json"
 $launcherPath = Join-Path $repoRoot "actions-tui.cmd"
 $iconPath = Join-Path $repoRoot "assets\actions-tui.ico"
@@ -92,6 +92,7 @@ $shortcut.Save()
 
 Write-Host ""
 Write-Host "Actions TUI is set up."
+Write-Host "Local data: $stateFile"
 Write-Host "Desktop shortcut: $desktopShortcutPath"
 Write-Host "Terminal command: actions-tui"
 if ($pathUpdated) {

@@ -5,3 +5,4 @@ vendor_local/
 __pycache__/
 test_runs/
 data/tmp*/
+data/actions_state.json

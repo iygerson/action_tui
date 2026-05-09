@@ -5,7 +5,8 @@
 ## Behavior
 
 - a fresh clone starts empty
-- local state is stored in `data/actions_state.json`
+- local state is stored outside the repo in `%LOCALAPPDATA%\ActionsTui\actions_state.json`
+- pulling code updates does not overwrite your notes, because runtime data is no longer tracked with the repo
 - you create your own tables, actions, notes, and completed items inside the app
 
 ## Setup
@@ -20,6 +21,7 @@ What setup does:
 
 - creates a local `.venv`
 - installs `textual`
+- prepares `%LOCALAPPDATA%\ActionsTui\actions_state.json`
 - creates an `actions-tui` command shim in `%USERPROFILE%\bin`
 - adds `%USERPROFILE%\bin` to your user `PATH` if needed
 - creates a desktop shortcut named `Actions TUI`
