@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import textwrap
 from dataclasses import dataclass
 from datetime import date, timedelta
 from pathlib import Path
@@ -23,7 +24,7 @@ from actions_store import ActionRecord, ActionsStore, NoteBullet, TableRecord, d
 
 STATUS_OPTIONS = ["Not Started", "Started", "Completed"]
 SUBACTION_COLOR = "#d97706"
-SUBACTION_NOT_STARTED_COLOR = "#6b7280"
+SUBACTION_NOT_STARTED_COLOR = "#a3acba"
 SUBACTION_COMPLETED_COLOR = "#00a651"
 TABLE_BORDER_COLOR = "#2f6b3c"
 NOTE_BULLET_COLORS = {
@@ -1772,10 +1773,12 @@ class ActionsTuiApp(App[None]):
         if not actions:
             block_lines = ["", *self.plain_table_block_lines(summary, ["No actions due on this date."])]
             return self.render_lines_with_selection(block_lines)
-        block_lines = ["", *self.plain_table_block_lines(summary, self.format_action_table(actions))]
         if self.opened_key != "group:today" or self.navigation_mode != "detail":
+            block_lines = ["", *self.plain_table_block_lines(summary, self.format_action_table(actions))]
             return self.render_lines_with_selection(block_lines)
         selected_index = self.detail_today_index_for(len(actions))
+        content_lines, _ = self.format_today_action_table(actions, selected_index)
+        block_lines = ["", *self.plain_table_block_lines(summary, content_lines)]
         return self.render_lines_with_selection(block_lines, selected_line_index=6 + selected_index)
 
     def render_projects_overview(self) -> str | Text:
@@ -1893,7 +1896,11 @@ class ActionsTuiApp(App[None]):
         if self.opened_key == "group:today" and self.navigation_mode == "detail":
             actions = self.store.today_actions(self.selected_date)
             if actions:
-                return 6 + self.detail_today_index_for(len(actions))
+                selected_index = self.detail_today_index_for(len(actions))
+                window_line_count = len(self.today_title_window_lines(actions[selected_index]))
+                if window_line_count:
+                    return 6 + selected_index + window_line_count
+                return 6 + selected_index
             return None
         if self.opened_key == "group:projects" and self.navigation_mode == "detail":
             tables = self.store.all_tables()
@@ -2349,7 +2356,7 @@ class ActionsTuiApp(App[None]):
 
     def style_table_row_line(self, line: str) -> Text:
         text = Text()
-        border_chars = {"│", "─", "┼"}
+        border_chars = {"│", "─", "┼", "├", "┤", "╭", "╮", "╰", "╯"}
         for char in line:
             style = TABLE_BORDER_COLOR if char in border_chars else None
             text.append(char, style=style)
@@ -2397,9 +2404,8 @@ class ActionsTuiApp(App[None]):
         lines.append(bottom)
         return lines
 
-    def format_action_table(
+    def action_table_headers(
         self,
-        actions: Iterable[ActionRecord],
         *,
         include_table: bool = False,
         include_completed: bool = False,
@@ -2413,26 +2419,101 @@ class ActionsTuiApp(App[None]):
             headers.append("Completed")
         if include_retired:
             headers.append("Retired")
+        return headers
 
+    def action_table_rows(
+        self,
+        actions: Iterable[ActionRecord],
+        *,
+        include_table: bool = False,
+        include_completed: bool = False,
+        include_retired: bool = False,
+    ) -> list[list[str]]:
         rows: list[list[str]] = []
         for action in actions:
             table = self.store.table_for_id(action.table_id)
-            row = [self.summary_cell(action.title, 40)]
+            row = [action.title or "-"]
             if include_table:
-                row.append(self.summary_cell(table.name if table else "Unknown", 24))
+                row.append(table.name if table else "Unknown")
             row.extend(
                 [
-                    self.summary_cell(action.due_date or "-", 10),
-                    self.summary_cell(action.estimate or "-", 24),
-                    self.summary_cell(action.status or "-", 18),
-                    self.summary_cell(self.last_note_line(action.notes), 80),
+                    action.due_date or "-",
+                    action.estimate or "-",
+                    action.status or "-",
+                    self.last_note_line(action.notes),
                 ]
             )
             if include_completed:
-                row.append(self.summary_cell(action.completed_at or "-", 10))
+                row.append(action.completed_at or "-")
             if include_retired:
-                row.append(self.summary_cell(action.retired_at or "-", 10))
+                row.append(action.retired_at or "-")
             rows.append(row)
+        return rows
+
+    def today_title_window_lines(self, action: ActionRecord) -> list[str]:
+        headers = self.action_table_headers()
+        widths = self.column_widths(headers, self.table_block_inner_width())
+        action_column_width = widths[0] if widths else 0
+        title = " ".join(action.title.split()).strip()
+        if not title or len(title) <= action_column_width:
+            return []
+        expanded_width = max(self.table_block_inner_width(), 24)
+        wrapped = textwrap.wrap(
+            title,
+            width=max(expanded_width - 4, 12),
+            break_long_words=False,
+            break_on_hyphens=False,
+        )
+        if not wrapped:
+            return []
+        lines: list[str] = [f"╭{'─' * (expanded_width - 2)}╮"]
+        for chunk in wrapped:
+            lines.append(f"│ {chunk.ljust(expanded_width - 4)} │")
+        lines.append(f"╰{'─' * (expanded_width - 2)}╯")
+        return lines
+
+    def format_today_action_table(self, actions: list[ActionRecord], selected_index: int) -> tuple[list[str], int]:
+        headers = self.action_table_headers()
+        rows = self.action_table_rows(actions)
+        widths = self.column_widths(headers, self.table_block_inner_width())
+
+        def fit(value: str, width: int) -> str:
+            return self.summary_cell(value, width).ljust(width)
+
+        def render_row(values: list[str]) -> str:
+            cells = [fit(values[index], widths[index]) for index in range(len(widths))]
+            return " │ ".join(cells)
+
+        divider = "─┼─".join("─" * width for width in widths)
+        lines = [render_row(headers), divider]
+        window_line_count = 0
+        window_lines = self.today_title_window_lines(actions[selected_index]) if actions else []
+        for index, row in enumerate(rows):
+            lines.append(render_row(row))
+            if index == selected_index and window_lines:
+                lines.extend(window_lines)
+                window_line_count = len(window_lines)
+        return lines, window_line_count
+
+    def format_action_table(
+        self,
+        actions: Iterable[ActionRecord],
+        *,
+        include_table: bool = False,
+        include_completed: bool = False,
+        include_retired: bool = False,
+    ) -> list[str]:
+        headers = self.action_table_headers(
+            include_table=include_table,
+            include_completed=include_completed,
+            include_retired=include_retired,
+        )
+        rows = self.action_table_rows(
+            actions,
+            include_table=include_table,
+            include_completed=include_completed,
+            include_retired=include_retired,
+        )
         return self.format_columns(headers, rows, total_width=self.table_block_inner_width())
 
     def detail_table_width(self) -> int:
