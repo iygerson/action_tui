@@ -65,7 +65,6 @@ You can still launch it from the repo with:
 - `e`: edit the selected action, or rename the selected project
 - `s` / `S`: open the status picker for the focused action
 - `a`: in full action detail add a subaction; otherwise add an action
-- `c`: mark an active action complete and send it to `Completed`
 - `x`: on a focused note bullet, opens a confirmation window and deletes that bullet; from `Completed`, permanently deletes the focused completed action after confirmation
 - `u`: restore a completed action to active
 - `d` / `D`: open the due date prompt for the focused action

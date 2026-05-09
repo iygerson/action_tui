@@ -300,7 +300,6 @@ class HelpScreen(ModalScreen[None]):
                         "Inside the action editor, arrows or Enter move between fields, Left/Right on Status changes it, and Tab saves",
                         "E: edit the selected action or rename the selected project",
                         "A: in full action detail add a subaction; otherwise add action to the selected project",
-                        "C: complete active action to Completed",
                         "X: delete the focused note bullet, or permanently delete the focused completed action after confirmation",
                         "U: restore from Completed",
                         "D: edit the due date of the focused action",
@@ -1202,7 +1201,6 @@ class ActionsTuiApp(App[None]):
         Binding("s", "edit_status", "Status"),
         Binding("shift+s", "edit_status", show=False, priority=True),
         Binding("a", "new_action", "Add"),
-        Binding("c", "complete_action", "Complete"),
         Binding("x", "retire_action", "Delete"),
         Binding("u", "restore_action", "Restore"),
         Binding("d", "edit_due_date", "Due Date"),
@@ -1363,6 +1361,9 @@ class ActionsTuiApp(App[None]):
     def list_selected(self, event: ListView.Selected) -> None:
         if self.refreshing_lists or self.navigation_mode == "groups" or not event.list_view.has_focus:
             return
+        if self.navigation_mode == "detail":
+            self.call_after_refresh(self.restore_navigation_focus)
+            return
         group = self.group_for_list_id(event.list_view.id or "")
         if group:
             self.active_group = group
@@ -1376,6 +1377,9 @@ class ActionsTuiApp(App[None]):
     @on(ListView.Highlighted)
     def list_highlighted(self, event: ListView.Highlighted) -> None:
         if self.refreshing_lists or self.navigation_mode == "groups" or not event.list_view.has_focus:
+            return
+        if self.navigation_mode == "detail":
+            self.call_after_refresh(self.restore_navigation_focus)
             return
         group = self.group_for_list_id(event.list_view.id or "")
         if group:
@@ -1395,7 +1399,11 @@ class ActionsTuiApp(App[None]):
 
     def refresh_representative_pane(self) -> None:
         self.group_entries = self.build_representative_entries()
-        selected_group = self.find_group_for_key(self.selected_key)
+        selected_group: str | None
+        if self.navigation_mode == "detail" and (self.opened_key or "").startswith("action:"):
+            selected_group = self.detail_origin_group
+        else:
+            selected_group = self.find_group_for_key(self.selected_key)
         if selected_group:
             self.active_group = selected_group
         self.query_one("#today_group_title", Static).update(f"Today ({len(self.group_entries['today'])})")
@@ -2616,6 +2624,11 @@ class ActionsTuiApp(App[None]):
                 return
             self.active_group = self.detail_origin_group
             self.navigation_mode = self.return_mode
+            self.opened_key = f"group:{self.active_group}"
+            if self.opened_key == "group:projects":
+                self.detail_projects_mode = "tables"
+            if self.opened_key == "group:archive":
+                self.detail_archive_mode = "tables"
             if self.navigation_mode == "groups":
                 self.selected_key = f"group:{self.active_group}"
             else:
@@ -3138,23 +3151,6 @@ class ActionsTuiApp(App[None]):
             self.update_status(f"Marked {action.title} completed and moved it to Completed")
             return
         self.update_status(f"Updated status for {action.title} to {action.status}")
-
-    def action_complete_action(self) -> None:
-        action = self.current_action()
-        if action is None:
-            self.update_status("Complete works on active actions only")
-            return
-        found = self.store.action_by_id(action.id)
-        if found is None or found[0] != "active":
-            self.update_status("Complete works on active actions only")
-            return
-        self.store.complete_action(action.id)
-        self.selected_key = "group:archive"
-        self.opened_key = "group:archive"
-        self.navigation_mode = "detail"
-        self.return_mode = "groups"
-        self.refresh_all()
-        self.update_status(f"Completed {action.title}")
 
     def action_retire_action(self) -> None:
         current_bullet = self.current_detail_note_bullet()
